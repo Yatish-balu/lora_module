@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoRa Wireless Messenger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="chat-header">
+            <div class="header-left">
+                <h1>LoRa Wireless Messenger</h1>
+                <span id="node-badge" class="badge">CONNECTING...</span>
+            </div>
+            <div class="header-right">
+                <div id="status-indicator" class="status-dot offline"></div>
+                <span id="status-text">DISCONNECTED</span>
+            </div>
+        </header>
+        <div id="disconnect-alert" class="alert-banner">
+            Serial connection lost. Check USB-to-UART hardware and COM port configuration.
+        </div>
+        <main id="chat-area" class="chat-area">
+            <div id="empty-state" class="empty-state">
+                <div class="empty-icon">📡</div>
+                <h2>Secure Off-Grid Link</h2>
+                <p>Establishing serial port interface to LoRa module. Messages sent here will transmit over radio frequency.</p>
+            </div>
+        </main>
+        <footer class="chat-footer">
+            <form id="message-form" class="message-form">
+                <input type="text" id="message-input" class="message-input" placeholder="Type your message..." autocomplete="off" disabled>
+                <button type="submit" id="send-button" class="send-button" disabled>
+                    <svg viewBox="0 0 24 24" class="send-icon">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                    </svg>
+                </button>
+            </form>
+        </footer>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
