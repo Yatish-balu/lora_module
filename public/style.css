@@ -346,3 +346,136 @@ body {
     height: 20px;
     fill: white;
 }
+
+.sound-toggle-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.1s;
+    margin-right: 8px;
+    outline: none;
+}
+
+.sound-toggle-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.sound-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+.sound-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: #e8f5e9;
+    transition: fill 0.2s;
+}
+
+.sound-toggle-btn:hover svg {
+    fill: white;
+}
+
+/* Peer Status Bar Styling */
+.peers-status-bar {
+    background-color: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: #4a5155;
+    z-index: 5;
+}
+
+.peers-title {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #727b80;
+}
+
+.peers-list {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.peer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: white;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.peer-badge.online {
+    border-color: rgba(46, 204, 113, 0.4);
+    color: #2ecc71;
+}
+
+.peer-badge.offline {
+    border-color: rgba(231, 76, 60, 0.3);
+    color: #e74c3c;
+    opacity: 0.7;
+}
+
+.peer-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.peer-dot.online {
+    background-color: #2ecc71;
+    box-shadow: 0 0 6px #2ecc71;
+}
+
+.peer-dot.offline {
+    background-color: #e74c3c;
+}
+
+.no-peers {
+    color: #8696a0;
+    font-style: italic;
+}
+
+/* Message Status Icon Styling */
+.msg-status-icon {
+    font-size: 0.75rem;
+    margin-left: 4px;
+    display: inline-block;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.msg-status-icon.sending {
+    color: #8696a0;
+}
+
+.msg-status-icon.sent {
+    color: #8696a0;
+}
+
+.msg-status-icon.delivered {
+    color: #2ecc71;
+    font-weight: bold;
+}
+
+.msg-status-icon.failed {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+
