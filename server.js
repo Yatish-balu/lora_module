@@ -4,10 +4,10 @@ const { Server } = require('socket.io');
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
 
-const PORT = 3000;
-const COM_PORT = 'COM5';
-const BAUD_RATE = 115200;
-const CURRENT_NODE = 'NODEA';
+const PORT = process.env.PORT || process.argv[3] || 3000;
+const COM_PORT = process.env.COM_PORT || process.argv[2] || 'COM5';
+const BAUD_RATE = parseInt(process.env.BAUD_RATE) || 115200;
+const CURRENT_NODE = process.env.CURRENT_NODE || process.argv[4] || 'NODEA';
 
 const app = express();
 const server = http.createServer(app);
@@ -152,11 +152,15 @@ parser.on('data', (data) => {
     if (msgId) {
       const ackPacket = `${CURRENT_NODE}|ACK|${msgId}\r\n`;
       if (isSerialConnected) {
-        port.write(ackPacket, (err) => {
-          if (err) {
-            console.error(`Error sending ACK: ${err.message}`);
-          }
-        });
+        // Add a 50ms delay to allow the receiving STM32 to finish printing
+        // the message and safely return to its RX loop state before it receives the ACK.
+        setTimeout(() => {
+          port.write(ackPacket, (err) => {
+            if (err) {
+              console.error(`Error sending ACK: ${err.message}`);
+            }
+          });
+        }, 50);
       }
     }
   }
