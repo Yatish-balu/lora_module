@@ -161,14 +161,14 @@ function parseSensorTelemetry(line) {
     matched = true;
   }
 
-  const smokeMatch = line.match(/(?:smoke)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+  const smokeMatch = line.match(/(?:smoke|gas)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
   if (smokeMatch) {
     const rawVal = smokeMatch[1];
     telemetry.smoke = (rawVal === '1' || rawVal.toLowerCase() === 'true' || rawVal.toLowerCase() === 'danger' || rawVal.toLowerCase() === 'high') ? 1 : 0;
     matched = true;
   }
 
-  const accelMatch = line.match(/(?:accel(?:erometer)?)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?(?:\s*,\s*[+-]?\d+(?:\.\d+)?){2}|[+-]?\d+(?:\.\d+)?)/i);
+  const accelMatch = line.match(/(?:accel(?:erometer)?|acc)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?(?:\s*,\s*[+-]?\d+(?:\.\d+)?){2}|[+-]?\d+(?:\.\d+)?)/i);
   if (accelMatch) {
     telemetry.accel = accelMatch[1];
     matched = true;
@@ -199,6 +199,9 @@ parser.on('data', (data) => {
   // Broadcast raw line for the terminal feed
   io.emit('raw-telemetry-line', line);
 
+  // Try to parse sensor data from the entire line first (robust to both old and new formats)
+  const sensorData = parseSensorTelemetry(line);
+
   // Parse peer name and body payload if structured as: SENDER|BODY
   const parts = line.split('|');
   let sender = 'Unknown';
@@ -211,8 +214,8 @@ parser.on('data', (data) => {
     isProtocol = true;
   }
 
-  // Ignore message echoes from ourselves, if any
-  if (sender === CURRENT_NODE) return;
+  // Ignore message echoes from ourselves, if any (except sensor updates)
+  if (sender === CURRENT_NODE && !sensorData) return;
 
   if (isProtocol) {
     // Update peer online timestamp
@@ -220,7 +223,6 @@ parser.on('data', (data) => {
   }
 
   // Try to parse sensor data from the payload or line
-  const sensorData = parseSensorTelemetry(payload);
   if (sensorData) {
     peerSensors.set(sender, sensorData);
     io.emit('sensor-update', { peer: sender, sensors: sensorData });

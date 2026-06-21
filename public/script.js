@@ -262,8 +262,9 @@ function updatePeersBar() {
 
   if (activePeers.length > 0) {
     peersListEl.textContent = activePeers.join(', ');
-    // Auto-focus active remote peer for telemetry
-    activePeerName = activePeers[0];
+    // Prioritize active peer that is NOT our own local node name
+    const remotePeer = activePeers.find(p => p !== myNodeName);
+    activePeerName = remotePeer || activePeers[0];
   } else {
     peersListEl.textContent = 'No active remote nodes detected';
   }
