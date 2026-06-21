@@ -123,7 +123,7 @@ function appendConsoleLine(text, type = 'incoming') {
 
 // ── Sensor Helper Functions ──
 function isAlert(key, value) {
-  if (key === 'temp' && parseFloat(value) > 40) return true;
+  if (key === 'temp' && parseFloat(value) > 70) return true;
   if (key === 'vibration' && parseInt(value) === 1) return true;
   if (key === 'float' && parseInt(value) === 1) return true;
   if (key === 'flame' && parseInt(value) === 1) return true;
@@ -218,7 +218,7 @@ function checkAllPeerAlerts() {
   for (const [peer, state] of nodeStates.entries()) {
     if (state.status === 'online' && state.sensors) {
       const s = state.sensors;
-      if (s.temp !== undefined && s.temp > 40) breachedSensors.push('Temperature');
+      if (s.temp !== undefined && s.temp > 70) breachedSensors.push('Temperature');
       if (s.vibration !== undefined && s.vibration === 1) breachedSensors.push('Vibration');
       if (s.float !== undefined && s.float === 1) breachedSensors.push('Float');
       if (s.flame !== undefined && s.flame === 1) breachedSensors.push('Flame');

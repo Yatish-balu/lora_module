@@ -229,7 +229,7 @@ parser.on('data', (data) => {
 
     // Check thresholds and emit warnings
     const warnings = [];
-    if (sensorData.temp > 40) warnings.push(`High Temperature: ${sensorData.temp}°C`);
+    if (sensorData.temp > 70) warnings.push(`High Temperature: ${sensorData.temp}°C`);
     if (sensorData.vibration === 1) warnings.push(`Vibration Alert`);
     if (sensorData.float === 1) warnings.push(`Float Sensor Alert`);
     if (sensorData.flame === 1) warnings.push(`Flame detected`);
