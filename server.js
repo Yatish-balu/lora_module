@@ -15,6 +15,18 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+app.get('/mock-telemetry', (req, res) => {
+  const line = req.query.line;
+  if (line) {
+    console.log(`[HTTP MOCK TELEMETRY]: ${line}`);
+    // Simulate serial data receipt
+    parser.emit('data', line);
+    res.send(`Mocked line: ${line}`);
+  } else {
+    res.status(400).send('Provide a "line" query parameter, e.g., /mock-telemetry?line=Temp:24.5');
+  }
+});
+
 const port = new SerialPort({
   path: COM_PORT,
   baudRate: BAUD_RATE,
@@ -26,12 +38,13 @@ const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 let isSerialConnected = false;
 const activePeers = new Map(); // peerName -> lastSeenTimestamp
 const pendingMessages = new Map(); // msgId -> timer
+const peerSensors = new Map(); // peerName -> sensorsObj
 
 function updatePeerStatus(peer) {
   const isNew = !activePeers.has(peer) || activePeers.get(peer) === 0;
   activePeers.set(peer, Date.now());
   if (isNew) {
-    io.emit('peer-status', { peer, status: 'online' });
+    io.emit('peer-status', { peer, status: 'online', sensors: peerSensors.get(peer) || {} });
   }
 }
 
@@ -100,19 +113,138 @@ port.on('error', (err) => {
   console.error(`Serial port error: ${err.message}`);
 });
 
+function parseSensorTelemetry(line) {
+  // 1. Try parsing as JSON
+  try {
+    const data = JSON.parse(line);
+    const keys = ['temp', 'temperature', 'vib', 'vibration', 'float', 'flame', 'smoke', 'accel'];
+    if (Object.keys(data).some(k => keys.includes(k.toLowerCase()))) {
+      return {
+        temp: data.temp !== undefined ? data.temp : data.temperature,
+        vibration: data.vibration !== undefined ? data.vibration : data.vib,
+        float: data.float,
+        flame: data.flame,
+        smoke: data.smoke,
+        accel: data.accel
+      };
+    }
+  } catch (e) {}
+
+  // 2. Try parsing with RegEx for key-value formats (e.g. "Temp: 24.5", "Float: 1", etc.)
+  const telemetry = {};
+  let matched = false;
+
+  const tempMatch = line.match(/(?:temp(?:erature)?)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+  if (tempMatch) {
+    telemetry.temp = parseFloat(tempMatch[1]);
+    matched = true;
+  }
+
+  const vibMatch = line.match(/(?:vib(?:ration)?)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+  if (vibMatch) {
+    const rawVal = vibMatch[1];
+    telemetry.vibration = (rawVal === '1' || rawVal.toLowerCase() === 'true' || rawVal.toLowerCase() === 'danger' || rawVal.toLowerCase() === 'high') ? 1 : 0;
+    matched = true;
+  }
+
+  const floatMatch = line.match(/(?:float)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+  if (floatMatch) {
+    const rawVal = floatMatch[1];
+    telemetry.float = (rawVal === '1' || rawVal.toLowerCase() === 'true' || rawVal.toLowerCase() === 'danger' || rawVal.toLowerCase() === 'high') ? 1 : 0;
+    matched = true;
+  }
+
+  const flameMatch = line.match(/(?:flame)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+  if (flameMatch) {
+    const rawVal = flameMatch[1];
+    telemetry.flame = (rawVal === '1' || rawVal.toLowerCase() === 'true' || rawVal.toLowerCase() === 'danger' || rawVal.toLowerCase() === 'high') ? 1 : 0;
+    matched = true;
+  }
+
+  const smokeMatch = line.match(/(?:smoke)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+  if (smokeMatch) {
+    const rawVal = smokeMatch[1];
+    telemetry.smoke = (rawVal === '1' || rawVal.toLowerCase() === 'true' || rawVal.toLowerCase() === 'danger' || rawVal.toLowerCase() === 'high') ? 1 : 0;
+    matched = true;
+  }
+
+  const accelMatch = line.match(/(?:accel(?:erometer)?)\s*[:=]?\s*([+-]?\d+(?:\.\d+)?(?:\s*,\s*[+-]?\d+(?:\.\d+)?){2}|[+-]?\d+(?:\.\d+)?)/i);
+  if (accelMatch) {
+    telemetry.accel = accelMatch[1];
+    matched = true;
+  } else {
+    // Try matching individual X, Y, Z axes
+    const xMatch = line.match(/x\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+    const yMatch = line.match(/y\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+    const zMatch = line.match(/z\s*[:=]?\s*([+-]?\d+(?:\.\d+)?)/i);
+    if (xMatch || yMatch || zMatch) {
+      const x = xMatch ? parseFloat(xMatch[1]) : 0;
+      const y = yMatch ? parseFloat(yMatch[1]) : 0;
+      const z = zMatch ? parseFloat(zMatch[1]) : 0;
+      telemetry.accel = `${x}, ${y}, ${z}`;
+      matched = true;
+    }
+  }
+
+  if (matched) {
+    return telemetry;
+  }
+  return null;
+}
+
 parser.on('data', (data) => {
   const line = data.trim();
   if (!line) return;
-  const parts = line.split('|');
-  if (parts.length >= 2) {
-    const sender = parts[0];
-    const typeOrText = parts[1];
-    
-    // Ignore message echoes from ourselves, if any
-    if (sender === CURRENT_NODE) return;
 
+  // Broadcast raw line for the terminal feed
+  io.emit('raw-telemetry-line', line);
+
+  // Parse peer name and body payload if structured as: SENDER|BODY
+  const parts = line.split('|');
+  let sender = 'Unknown';
+  let payload = line;
+  let isProtocol = false;
+
+  if (parts.length >= 2) {
+    sender = parts[0];
+    payload = parts[1];
+    isProtocol = true;
+  }
+
+  // Ignore message echoes from ourselves, if any
+  if (sender === CURRENT_NODE) return;
+
+  if (isProtocol) {
     // Update peer online timestamp
     updatePeerStatus(sender);
+  }
+
+  // Try to parse sensor data from the payload or line
+  const sensorData = parseSensorTelemetry(payload);
+  if (sensorData) {
+    peerSensors.set(sender, sensorData);
+    io.emit('sensor-update', { peer: sender, sensors: sensorData });
+
+    // Check thresholds and emit warnings
+    const warnings = [];
+    if (sensorData.temp > 40) warnings.push(`High Temperature: ${sensorData.temp}°C`);
+    if (sensorData.vibration === 1) warnings.push(`Vibration Alert`);
+    if (sensorData.float === 1) warnings.push(`Float Sensor Alert`);
+    if (sensorData.flame === 1) warnings.push(`Flame detected`);
+    if (sensorData.smoke === 1) warnings.push(`Smoke/Gas Alert`);
+
+    if (warnings.length > 0) {
+      io.emit('warning', {
+        peer: sender,
+        timestamp: new Date().toISOString(),
+        reason: warnings.join(', ')
+      });
+    }
+  }
+
+  // Handle standard protocol chat messages
+  if (isProtocol && !sensorData) {
+    const typeOrText = parts[1];
 
     if (typeOrText === 'PING') {
       console.log(`Ping received from ${sender}`);
@@ -163,6 +295,16 @@ parser.on('data', (data) => {
         }, 50);
       }
     }
+  } else if (!sensorData) {
+    // Non-protocol line - display it in the chat/telemetry feed
+    const timestamp = new Date().toISOString();
+    io.emit('receive-message', {
+      id: 'telemetry-' + Date.now(),
+      sender: 'Raw Data',
+      text: line,
+      rssi: null,
+      timestamp
+    });
   }
 });
 
@@ -173,7 +315,8 @@ io.on('connection', (socket) => {
   // Send initial list of peers and their statuses
   const peerList = Array.from(activePeers.entries()).map(([peer, lastSeen]) => ({
     peer,
-    status: (lastSeen > 0 && (Date.now() - lastSeen < 60000)) ? 'online' : 'offline'
+    status: (lastSeen > 0 && (Date.now() - lastSeen < 60000)) ? 'online' : 'offline',
+    sensors: peerSensors.get(peer) || {}
   }));
   socket.emit('peer-status-list', peerList);
 

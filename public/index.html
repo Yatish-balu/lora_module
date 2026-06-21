@@ -3,57 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoRa Wireless Messenger</title>
+    <title>Mesh Network Interface</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
-        <header class="chat-header">
-            <div class="header-left">
-                <h1>LoRa Wireless Messenger</h1>
-                <span id="node-badge" class="badge">CONNECTING...</span>
-            </div>
-            <div class="header-right">
-                <button id="sound-toggle" class="sound-toggle-btn" title="Mute Notifications" type="button">
-                    <svg viewBox="0 0 24 24" id="sound-icon">
-                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path>
-                    </svg>
-                </button>
-                <div id="status-indicator" class="status-dot offline"></div>
-                <span id="status-text">DISCONNECTED</span>
-            </div>
-        </header>
-        <div id="peers-status-bar" class="peers-status-bar">
-            <span class="peers-title">Remote Peers:</span>
-            <div id="peers-list" class="peers-list">
-                <span class="no-peers">No active remote nodes detected</span>
-            </div>
-        </div>
-        <div id="disconnect-alert" class="alert-banner">
-            Serial connection lost. Check USB-to-UART hardware and COM port configuration.
-        </div>
-        <main id="chat-area" class="chat-area">
-            <div id="empty-state" class="empty-state">
-                <div class="empty-icon">📡</div>
-                <h2>Secure Off-Grid Link</h2>
-                <p>Establishing serial port interface to LoRa module. Messages sent here will transmit over radio frequency.</p>
-            </div>
-        </main>
-        <footer class="chat-footer">
-            <form id="message-form" class="message-form">
-                <input type="text" id="message-input" class="message-input" placeholder="Type your message..." autocomplete="off" disabled>
-                <button type="submit" id="send-button" class="send-button" disabled>
-                    <svg viewBox="0 0 24 24" class="send-icon">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-                    </svg>
-                </button>
-            </form>
-        </footer>
+
+<div class="app-container">
+  <!-- ── Header ── -->
+  <header>
+    <div class="header-left">
+      <h1>LoRa Wireless Messenger</h1>
+      <span class="node-badge" id="node-name-badge">NODEA</span>
     </div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script>
+    <div class="header-right">
+      <button id="sound-toggle" class="sound-toggle-btn" title="Mute Notifications" type="button">
+        <svg viewBox="0 0 24 24" id="sound-icon">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path>
+        </svg>
+      </button>
+      <div class="serial-indicator">
+        <div class="dot" id="serial-dot"></div>
+        <span id="serial-label">DISCONNECTED</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Remote Peers sub-header ── -->
+  <div class="peers-bar">
+    <span class="peers-title">REMOTE PEERS:</span>
+    <span id="peers-list" class="peers-list">No active remote nodes detected</span>
+  </div>
+
+  <!-- ── Alert Banners ── -->
+  <div id="serial-lost-banner" class="alert-banner disconnect">
+    Serial connection lost. Check USB-to-UART hardware and COM port configuration.
+  </div>
+  <div id="alarm-banner" class="alert-banner alarm hidden">
+    ⚠️ ⚠️ ⚠️ &nbsp; SYSTEM ALARM: DANGER DETECTED! Active alerts on: <span id="alarm-active-sensors">None</span> &nbsp; ⚠️ ⚠️ ⚠️
+  </div>
+
+  <!-- ── Main Workspace ── -->
+  <div class="main-workspace">
+    <!-- Telemetry Column (Left) -->
+    <div id="telemetry-panel">
+      <div class="panel-header">REAL-TIME TELEMETRY</div>
+      <div id="telemetry-grid">
+        <!-- Telemetry cards will be injected by script.js -->
+      </div>
+    </div>
+
+    <!-- Toggleable Sidebar (Right) -->
+    <div id="sidebar-panel">
+      <div class="sidebar-header">
+        <span id="sidebar-title">SERIAL STREAM (PUTTY FEED)</span>
+        <div class="header-actions">
+          <button id="clear-console-btn" class="header-btn">Clear</button>
+          <button id="toggle-view-btn" class="header-btn accent">Chat View</button>
+        </div>
+      </div>
+      
+      <!-- View 1: Serial Console Log -->
+      <div id="serial-console-view" class="console-wrapper">
+        <div id="console-log">
+          <div class="console-line system">[SYSTEM] Console log cleared.</div>
+        </div>
+      </div>
+
+      <!-- View 2: Chat View (Hidden by default) -->
+      <div id="chat-view" class="chat-wrapper hidden">
+        <div id="messages">
+          <div class="empty-chat" id="empty-chat">
+            <div class="icon">💬</div>
+            <span>No messages yet</span>
+          </div>
+        </div>
+        <div id="input-bar">
+          <input id="msg-input" type="text" placeholder="Type a message…" autocomplete="off"/>
+          <button id="send-btn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div class="footer-dot"></div>
+    <span id="footer-status-text">ONE-WAY MONITORING STREAM ACTIVE</span>
+  </footer>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
